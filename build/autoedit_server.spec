@@ -9,6 +9,25 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
+# --- AutoEdit fix: disable system-site-packages injection ----------------------
+# The bundled server otherwise reaches into the user's system Python and loads
+# mismatched native libraries, which hard-crashes the process on the first
+# request. Neutralise the call so the bundle uses ONLY its own packages.
+import os as _os
+_sp = _os.path.join('opencut', 'server.py')
+try:
+    _src = open(_sp, encoding='utf-8').read()
+    if '\n_setup_system_site_packages()\n' in _src:
+        _src = _src.replace('\n_setup_system_site_packages()\n',
+                            '\n# _setup_system_site_packages()  # AutoEdit: disabled (bundled deps only)\n')
+        open(_sp, 'w', encoding='utf-8').write(_src)
+        print('AutoEdit: disabled system-site-packages injection in opencut/server.py')
+    else:
+        print('AutoEdit WARNING: call site not found (server.py changed?)')
+except FileNotFoundError:
+    print('AutoEdit WARNING: opencut/server.py not found at build time')
+# -------------------------------------------------------------------------------
+
 # Collect all opencut submodules (lazy imports in route handlers)
 opencut_hiddenimports = collect_submodules('opencut')
 
