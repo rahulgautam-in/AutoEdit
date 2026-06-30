@@ -1,0 +1,6 @@
+# Source pin for reproducible builds
+# The CI workflow builds AutoEdit from OpenCut at this exact ref.
+# Server and extension are built from the SAME version so they can never mismatch.
+
+OPENCUT_REF=v1.25.1
+SOURCE=https://github.com/SysAdminDoc/OpenCut

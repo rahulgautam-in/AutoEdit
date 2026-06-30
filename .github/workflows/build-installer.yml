@@ -1,0 +1,90 @@
+name: Build AutoEdit Installer
+
+# Builds AutoEdit-Setup.exe on a Windows cloud runner.
+# - Pulls OpenCut source at the pinned commit
+# - Overlays the AutoEdit extension + branding + build config
+# - Bundles the server with PyInstaller (its own Python -> no system-Python crash)
+# - Compiles the installer with Inno Setup
+# Trigger: manually (workflow_dispatch) or when you push a tag like v1.0.0
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+env:
+  OPENCUT_REF: v1.25.1          # pinned source version (server + base UI come from here)
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout AutoEdit repo
+        uses: actions/checkout@v4
+        with:
+          path: autoedit
+
+      - name: Clone OpenCut source (pinned)
+        run: git clone --depth 1 --branch ${{ env.OPENCUT_REF }} https://github.com/SysAdminDoc/OpenCut.git build
+
+      - name: Overlay AutoEdit branding onto the source tree
+        shell: pwsh
+        run: |
+          # Replace the extension with the AutoEdit-branded one
+          Remove-Item -Recurse -Force build\extension\com.opencut.panel -ErrorAction SilentlyContinue
+          Copy-Item -Recurse -Force autoedit\extension\com.autoedit.panel build\extension\com.autoedit.panel
+          # Build config + installer + license
+          Copy-Item -Force autoedit\build\autoedit_server.spec build\autoedit_server.spec
+          New-Item -ItemType Directory -Force build\installer | Out-Null
+          Copy-Item -Force autoedit\installer\AutoEdit.iss            build\installer\AutoEdit.iss
+          Copy-Item -Force autoedit\installer\AutoEdit-Launcher.vbs   build\installer\AutoEdit-Launcher.vbs
+          Copy-Item -Force autoedit\LICENSE                           build\LICENSE
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install server dependencies
+        working-directory: build
+        run: |
+          python -m pip install --upgrade pip
+          # Base package + the lightweight deps the spec bundles (no torch).
+          pip install -e .
+          pip install pyinstaller faster-whisper deep-translator flask flask-cors `
+                      librosa pydub soundfile scenedetect opencv-python-headless `
+                      pillow numpy huggingface_hub
+
+      - name: Build server bundle (PyInstaller)
+        working-directory: build
+        run: pyinstaller --noconfirm autoedit_server.spec
+
+      - name: Fetch FFmpeg (ffmpeg.exe + ffprobe.exe)
+        working-directory: build
+        shell: pwsh
+        run: |
+          $u = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+          Invoke-WebRequest -Uri $u -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_tmp
+          New-Item -ItemType Directory -Force ffmpeg | Out-Null
+          Copy-Item (Get-ChildItem -Recurse ffmpeg_tmp -Filter ffmpeg.exe)[0].FullName  ffmpeg\ffmpeg.exe
+          Copy-Item (Get-ChildItem -Recurse ffmpeg_tmp -Filter ffprobe.exe)[0].FullName ffmpeg\ffprobe.exe
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        working-directory: build
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\AutoEdit.iss'
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoEdit-Setup
+          path: build/installer/dist/*.exe
+
+      - name: Attach to GitHub Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/installer/dist/*.exe
