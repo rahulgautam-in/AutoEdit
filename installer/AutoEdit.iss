@@ -8,6 +8,7 @@
 #define MyAppURL "https://github.com/REPLACE_ME/AutoEdit"
 
 [Setup]
+SourceDir=..
 ; IMPORTANT: generate a fresh GUID in Inno Setup (Tools > Generate GUID) and paste below.
 AppId={{E1F2A3B4-C5D6-47E8-9A0B-1C2D3E4F5A6B}
 AppName={#MyAppName}
