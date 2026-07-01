@@ -9,6 +9,17 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, coll
 
 block_cipher = None
 
+# --- AutoEdit: place brand icon into the build tree (for EXE + installer) -------
+import os as _os3, shutil as _sh3
+try:
+    _os3.makedirs('img', exist_ok=True)
+    _sh3.copy(_os3.path.join('..', 'autoedit', 'img', 'autoedit.ico'),
+              _os3.path.join('img', 'autoedit.ico'))
+    print('AutoEdit: brand icon copied into build tree')
+except Exception as _e:
+    print('AutoEdit: icon copy skipped:', _e)
+# -------------------------------------------------------------------------------
+
 # --- AutoEdit fix #2: force-include native DLLs (ctranslate2/cv2/etc.) ----------
 # PyInstaller often misses these .dll/.pyd files, which makes the server crash at
 # the C level on the first request (no Python traceback). Collect them explicitly.
@@ -118,7 +129,7 @@ exe = EXE(
     strip=False,
     upx=True,
     console=True,
-    icon=os.path.join('img', 'logo.ico'),   # swap for your own AutoEdit icon if desired
+    icon=os.path.join('img', 'autoedit.ico'),   # swap for your own AutoEdit icon if desired
 )
 
 coll = COLLECT(

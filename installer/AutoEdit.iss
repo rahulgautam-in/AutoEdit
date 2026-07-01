@@ -29,7 +29,8 @@ WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesInstallIn64BitMode=x64compatible
 ChangesEnvironment=yes
-; SetupIconFile=img\autoedit.ico        ; add your own icon and uncomment
+UninstallDisplayIcon={app}\autoedit.ico
+SetupIconFile=img\autoedit.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -40,6 +41,8 @@ Name: "autostart"; Description: "Start AutoEdit automatically when Windows start
 Name: "installextension"; Description: "Install the AutoEdit extension for Adobe Premiere Pro"; GroupDescription: "Adobe Integration:"
 
 [Files]
+; Brand icon (used by uninstall entry + shortcuts)
+Source: "img\autoedit.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; Bundled server (PyInstaller output: includes Python runtime + all deps)
 Source: "dist\AutoEdit-Server\*"; DestDir: "{app}\server"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Bundled FFmpeg
@@ -51,10 +54,10 @@ Source: "installer\AutoEdit-Launcher.vbs"; DestDir: "{app}"; Flags: ignoreversio
 Source: "extension\com.autoedit.panel\*"; DestDir: "{userappdata}\Adobe\CEP\extensions\com.autoedit.panel"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: installextension
 
 [Icons]
-Name: "{group}\AutoEdit Server";           Filename: "wscript.exe"; Parameters: """{app}\AutoEdit-Launcher.vbs"""; WorkingDir: "{app}"
+Name: "{group}\AutoEdit Server";           Filename: "wscript.exe"; Parameters: """{app}\AutoEdit-Launcher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\autoedit.ico"
 Name: "{group}\AutoEdit Server (Console)"; Filename: "{app}\server\AutoEdit-Server.exe"; WorkingDir: "{app}\server"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\AutoEdit"; Filename: "wscript.exe"; Parameters: """{app}\AutoEdit-Launcher.vbs"""; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\AutoEdit"; Filename: "wscript.exe"; Parameters: """{app}\AutoEdit-Launcher.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\autoedit.ico"; Tasks: desktopicon
 ; Hidden auto-start at login
 Name: "{userstartup}\AutoEdit"; Filename: "wscript.exe"; Parameters: """{app}\AutoEdit-Launcher.vbs"""; WorkingDir: "{app}"; Tasks: autostart
 
