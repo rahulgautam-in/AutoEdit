@@ -94,6 +94,23 @@ for pkg in ['ctranslate2', 'faster_whisper']:
     except Exception:
         pass
 
+# --- AutoEdit fix #3: disable DaVinci Resolve native module loading -------------
+# Importing Resolve's scripting DLL crashes the bundled Python (access violation)
+# during the /health capabilities check when Resolve is installed. AutoEdit is
+# Premiere-only, so we never import it.
+try:
+    _rb = os.path.join('opencut', 'core', 'resolve_bridge.py')
+    _t = open(_rb, encoding='utf-8').read()
+    _t = _t.replace('        import DaVinciResolveScript  # noqa: F401',
+                    '        raise ImportError("AutoEdit: Resolve disabled")')
+    _t = _t.replace('            import DaVinciResolveScript as dvr',
+                    '            raise ImportError("AutoEdit: Resolve disabled")')
+    open(_rb, 'w', encoding='utf-8').write(_t)
+    print('AutoEdit: disabled DaVinci Resolve native import in resolve_bridge.py')
+except Exception as _e:
+    print('AutoEdit: resolve patch skipped:', _e)
+# -------------------------------------------------------------------------------
+
 a = Analysis(
     [os.path.join('opencut', 'server.py')],
     pathex=['.'],
