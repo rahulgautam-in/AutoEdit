@@ -1,10 +1,11 @@
-/* AutoEdit UI revamp
- * - Removes the left sidebar
- * - Adds a top brand bar (logo + "AutoEdit Studio" + version)
- * - Adds 4 big rounded tab buttons in one row (Cut / Captions / Video / Settings)
- *   which drive the existing (now hidden) nav-tabs, so all logic still works
- * - Puts version + a clickable GitHub link at the TOP of Settings
- * Self-contained + defensive. To rename a tab, edit the TABS array below.
+/* AutoEdit UI revamp (v2)
+ * - Hides the left sidebar (keeps the original flex layout intact, so scrolling works)
+ * - Adds a website-style top bar INSIDE the scroll area: brand (logo + "AutoEdit
+ *   Studio" + version) on top, 4 big rounded tab buttons beneath. Because it lives
+ *   inside the scroll container, it scrolls away as you scroll down.
+ * - Tabs drive the existing (hidden) nav-tabs, so all logic still works.
+ * - Version + clickable GitHub link at the top of Settings.
+ * Self-contained + defensive. Rename tabs via the TABS array.
  */
 (function () {
   "use strict";
@@ -23,27 +24,24 @@
   }
 
   function build() {
-    var app = document.querySelector(".app");
-    var content = document.querySelector(".content-area");
-    if (!app || !content) return setTimeout(build, 500);
+    var main = document.querySelector(".main");   // the scroll container
+    if (!main) return setTimeout(build, 500);
 
-    // ---- styles ----
+    // ---- styles (do NOT touch .app / .content-area layout — that keeps scroll working) ----
     if (!document.getElementById("ae-ui-style")) {
       var st = document.createElement("style");
       st.id = "ae-ui-style";
       st.textContent =
         ".sidebar{display:none !important;}" +
-        ".app{display:block !important;}" +
-        ".content-area{width:100% !important;max-width:100% !important;}" +
-        ".content-kicker-row{display:none !important;}" +               /* hide redundant chip */
-        "#ae-topbar{display:flex;flex-direction:column;gap:12px;padding:14px 16px 6px;}" +
+        ".content-kicker-row{display:none !important;}" +      /* hide redundant chip */
+        "#ae-topbar{display:flex;flex-direction:column;gap:12px;margin:-4px 0 14px;}" +
         "#ae-brand{display:flex;align-items:center;gap:10px;}" +
         "#ae-brand img{width:28px;height:28px;border-radius:7px;}" +
         "#ae-brand .ae-name{font-weight:700;font-size:15px;color:#eaf2ff;letter-spacing:.3px;}" +
         "#ae-brand .ae-ver{margin-left:auto;font-size:11px;color:#9fb2d0;background:#141c2b;" +
           "border:1px solid #223049;padding:3px 9px;border-radius:20px;cursor:pointer;}" +
         "#ae-tabs{display:flex;gap:10px;}" +
-        "#ae-tabs .ae-tab{flex:1;text-align:center;padding:14px 8px;border-radius:14px;cursor:pointer;" +
+        "#ae-tabs .ae-tab{flex:1;text-align:center;padding:13px 8px;border-radius:14px;cursor:pointer;" +
           "font-weight:600;font-size:13px;color:#c7d5ea;background:#111a28;border:1px solid #1e2b40;transition:.15s;}" +
         "#ae-tabs .ae-tab:hover{border-color:#2f80ff;color:#fff;}" +
         "#ae-tabs .ae-tab.active{background:linear-gradient(180deg,#2f80ff,#2569d8);color:#fff;" +
@@ -51,7 +49,7 @@
       document.head.appendChild(st);
     }
 
-    // ---- top brand + tab bar ----
+    // ---- top brand + tab bar, inserted at the TOP of the scroll area ----
     if (!document.getElementById("ae-topbar")) {
       var logoSrc = "";
       var lm = document.querySelector(".logo-mark");
@@ -66,7 +64,7 @@
           '<span class="ae-ver" id="ae-ver" title="Open AutoEdit on GitHub">v' + VERSION + "</span>" +
         "</div>" +
         '<div id="ae-tabs"></div>';
-      content.parentNode.insertBefore(bar, content);
+      main.insertBefore(bar, main.firstChild);   // <-- inside the scroll container
 
       var host = bar.querySelector("#ae-tabs");
       TABS.forEach(function (t) {
@@ -79,11 +77,11 @@
           if (orig) orig.click();
           host.querySelectorAll(".ae-tab").forEach(function (x) { x.classList.remove("active"); });
           b.classList.add("active");
+          try { main.scrollTop = 0; } catch (e) {}   // jump to top on tab change
         });
         host.appendChild(b);
       });
 
-      // version chip -> GitHub
       var ver = bar.querySelector("#ae-ver");
       if (ver) ver.addEventListener("click", function () { openExternal("https://github.com/" + REPO); });
     }
@@ -107,7 +105,7 @@
       gh.addEventListener("click", function (e) { e.preventDefault(); openExternal("https://github.com/" + REPO); });
     }
 
-    // ---- make any existing About links open in the real browser ----
+    // ---- make existing About links open in the real browser ----
     Array.prototype.forEach.call(document.querySelectorAll("a.about-link"), function (a) {
       a.addEventListener("click", function (e) { e.preventDefault(); openExternal(a.href); });
     });
