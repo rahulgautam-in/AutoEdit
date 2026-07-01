@@ -5,9 +5,21 @@
 # This spec is copied into the OpenCut source tree by the CI workflow, then built there.
 
 import os
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_dynamic_libs
 
 block_cipher = None
+
+# --- AutoEdit fix #2: force-include native DLLs (ctranslate2/cv2/etc.) ----------
+# PyInstaller often misses these .dll/.pyd files, which makes the server crash at
+# the C level on the first request (no Python traceback). Collect them explicitly.
+native_binaries = []
+for _pkg in ['ctranslate2', 'faster_whisper', 'cv2', 'av', 'soundfile',
+             'numpy', 'tokenizers', 'sentencepiece', 'onnxruntime', 'scipy']:
+    try:
+        native_binaries += collect_dynamic_libs(_pkg)
+    except Exception:
+        pass
+# -------------------------------------------------------------------------------
 
 # --- AutoEdit fix: disable system-site-packages injection ----------------------
 # The bundled server otherwise reaches into the user's system Python and loads
@@ -22,6 +34,18 @@ try:
                             '\n# _setup_system_site_packages()  # AutoEdit: disabled (bundled deps only)\n')
         open(_sp, 'w', encoding='utf-8').write(_src)
         print('AutoEdit: disabled system-site-packages injection in opencut/server.py')
+    # enable faulthandler so any native crash writes a C stack we can read
+    _fh = ('import faulthandler as _fh, os as _o\n'
+           'try:\n'
+           '    _o.makedirs(_o.path.join(_o.path.expanduser("~"), ".opencut"), exist_ok=True)\n'
+           '    _fh.enable(open(_o.path.join(_o.path.expanduser("~"), ".opencut", "native_crash.log"), "w"))\n'
+           'except Exception:\n'
+           '    pass\n')
+    _src2 = open(_sp, encoding='utf-8').read()
+    if 'faulthandler' not in _src2:
+        _src2 = _src2.replace('import traceback\n', 'import traceback\n' + _fh, 1)
+        open(_sp, 'w', encoding='utf-8').write(_src2)
+        print('AutoEdit: enabled native crash logging')
     else:
         print('AutoEdit WARNING: call site not found (server.py changed?)')
 except FileNotFoundError:
@@ -62,7 +86,7 @@ for pkg in ['ctranslate2', 'faster_whisper']:
 a = Analysis(
     [os.path.join('opencut', 'server.py')],
     pathex=['.'],
-    binaries=[],
+    binaries=native_binaries,
     datas=extra_datas,
     hiddenimports=all_hiddenimports,
     hookspath=[],
